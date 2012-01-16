@@ -9,9 +9,8 @@ class NFSClient < Scout::Plugin
 
     data = {}
     attributes.each_with_index do |attribute, index|
-      data[attribute] = raw_data[index + 3].to_i
+      counter(attribute, raw_data[index + 3].to_i, :per => :second)
     end
 
-    report(data)
   end
 end
