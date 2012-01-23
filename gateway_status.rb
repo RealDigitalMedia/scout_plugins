@@ -7,28 +7,45 @@ class GatewayStatus < Scout::Plugin
   OPTIONS=<<-EOS
   url:
     name: Status URL
-    default: "http://127.0.0.1/player/GatewayStatus.cfc"
+    default: "http://localhost/player/GatewayStatus.cfc"
+  activity:
+    name: Type of activity
   EOS
 
   def build_report
-    url = option(:url) || "http://localhost:9999/player/GatewayStatus.cfc"
-
-    request_start = Time.now
-    hash = YAML::load(open(url).read.gsub("\t", ' ').gsub('=',': '))
-    request_end = Time.now
+    hash = get_latest_status
 
     media_player = hash["GatewayStatus"]["ActivityManager"]["Activities"]["MediaPlayer"]
 
-    activities = %w{Housekeeping RetrieveCapabilities SynchronizeContentWithoutComputation FirmwareUpdate SynchronizeContent SynchronizeConfiguration RetrieveStatus ProcessUnknownTasks}
+    activity = option(:activity)
 
-    report("query time" => request_end - request_start)
+    report("#{activity} pending"     => media_player[activity]["Pending"].to_i)
+    report("#{activity} complete"    => media_player[activity]["Complete"].to_i)
+    report("#{activity} in progress" => media_player[activity]["InProgress"].to_i)
+    report("#{activity} grand total" => media_player[activity]["Total"].to_i)
+    counter("#{activity} total", media_player[activity]["Total"].to_i, :per => :minute)
+  end
 
-    activities.each do |activity|
-      report("#{activity} pending" => media_player[activity]["Pending"].to_i)
-      report("#{activity} complete" => media_player[activity]["Complete"].to_i)
-      report("#{activity} in progress" => media_player[activity]["InProgress"].to_i)
-      counter("Total", media_player[activity]["Total"].to_i, :per => :minute)
+  protected
+
+  def get_latest_status
+    url = option(:url) || "http://localhost:9999/player/GatewayStatus.cfc"
+
+    if cache_file_age < Time.now - 60
+      status = open(url).read.gsub("\t", ' ').gsub('=',': ')
+      File.open(cache_file, "w") { |file| file.write(status) }
+
+      YAML::load(status)
     end
+
+    YAML::load(File.read(cache_file))
+  end
+
+  def cache_file_age
+    File.exist?(cache_file) ? File.stat(cache_file).mtime : Time.at(0)
+  end
+
+  def cache_file
+    "/tmp/scout_gateway_status.txt"
   end
 end
-
