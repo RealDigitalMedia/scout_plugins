@@ -30,6 +30,12 @@ class NginxUpstreamTiming < Scout::Plugin
   prefix_3:
     name: Prefix 3
     notes: Prefix for this metric
+  term_4:
+    name: Term 4
+    notes: Computes times for lines matching this expression
+  prefix_4:
+    name: Prefix 4
+    notes: Prefix for this metric
   term_5:
     name: Term 5
     notes: Computes times for lines matching this expression
