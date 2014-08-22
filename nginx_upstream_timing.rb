@@ -79,7 +79,7 @@ class NginxUpstreamTiming < Scout::Plugin
 
     metrics = {}
 
-    last_bytes = memory(:last_bytes) || 0
+    last_bytes     = memory(:last_bytes) || :no_last_bytes
     current_length = `#{@sudo_cmd}wc -c #{@log_file_path}`.split(' ')[0].to_i
 
     matches = {}
@@ -89,12 +89,13 @@ class NginxUpstreamTiming < Scout::Plugin
       term   = option(term_option)
       prefix = option("prefix_#{index}") || term_option
 
-      matches[Regexp.new(term)] = { prefix: prefix, values: [] }  if term
+      matches[Regexp.new(term)] = { prefix: prefix, values: [] } if term
     end
 
     # don't run it the first time
-    if (last_bytes >= 0 )
+    if (last_bytes != :no_last_bytes)
       read_length = current_length - last_bytes
+
       # Check to see if this file was rotated. This occurs when the +current_length+ is less than
       # the +last_run+. Don't return a count if this occured
       if read_length > 0
@@ -109,6 +110,7 @@ class NginxUpstreamTiming < Scout::Plugin
 
             fields = line.split
 
+            # field -2 is the upstream response time
             # field 12 would be response size
             upstream_time = float_parse(fields[-2])
             next unless upstream_time
@@ -124,18 +126,19 @@ class NginxUpstreamTiming < Scout::Plugin
 
             count = values.size
 
+            # Avoids a computation issue with mean (fails if array is empty)
             values = [0] if count == 0
 
-            metrics.merge!("#{prefix}_percentile" => values.percentile(95),
-                           "#{prefix}_stddev"     => values.standard_deviation,
-                           "#{prefix}_mean"       => values.mean,
-                           "#{prefix}_count"      => values.size)
+            metrics.merge!("#{prefix}_upstream_time_95_percentile" => values.percentile(95),
+                           "#{prefix}_upstream_time_stddev"        => values.standard_deviation,
+                           "#{prefix}_upstream_time_mean"          => values.mean,
+                           "#{prefix}_count"                       => values.size)
           end
         end
       end
-    end
 
-    report(metrics)
+      report(metrics)
+    end
 
     remember(:last_bytes, current_length)
   end
