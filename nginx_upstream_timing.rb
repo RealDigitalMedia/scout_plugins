@@ -1,5 +1,4 @@
 class NginxUpstreamTiming < Scout::Plugin
-  needs 'pty'
   needs 'descriptive_statistics'
 
   OPTIONS = <<-EOS
@@ -109,9 +108,10 @@ class NginxUpstreamTiming < Scout::Plugin
         # +read_length+. This ignores new lines that are added after finding the +current_length+. Those lines
         # will be read on the next run.
         command = %{#{@sudo_cmd}tail -c +#{last_bytes+1} #{@log_file_path} | head -c #{read_length}}
+        puts "Running command: #{command.inspect}"
 
-        PTY.spawn(command) do |stdin, stdout, pid|
-          stdin.each do |line|
+        IO.popen(command) do |io|
+          io.each do |line|
             line.chomp!
 
             fields = line.split
@@ -146,6 +146,7 @@ class NginxUpstreamTiming < Scout::Plugin
       report(metrics)
     end
 
+    puts "Remembering length of #{current_length.inspect}"
     remember(:last_bytes, current_length)
   end
 end
