@@ -8,9 +8,7 @@ class InterruptsContextSwitches < Scout::Plugin
       context_switches = data[1].to_i if data[0] == "ctxt"
     end
 
-    report({
-            "interrupts"  => interrupts,
-            "context switches" => context_switches,
-           })
+    counter("interrupts", interrupts, :per => :second)
+    counter("context switches", context_switches, :per => :second)
   end
 end

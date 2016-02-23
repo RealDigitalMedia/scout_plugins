@@ -25,6 +25,11 @@ class ProcessUptime < Scout::Plugin
 
     uptime = %x{ps -p #{pid} -o etime | tail -1}.chomp
 
+    if uptime.empty?
+      report({"#{name_prefix} process uptime".lstrip => 0})
+      return
+    end
+
     days_and_time = uptime.split("-")
     if days_and_time.size > 1
       days = days_and_time.shift.to_i

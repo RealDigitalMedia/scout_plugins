@@ -67,4 +67,3 @@ class MysqlStatistics < Scout::Plugin
     result.free
   end
 end
-

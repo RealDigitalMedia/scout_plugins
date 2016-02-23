@@ -33,7 +33,7 @@ class MysqlConnectionStatistics < Scout::Plugin
     host     = option(:host)
     port     = option(:port)
     socket   = option(:socket)
-    users    = option(:users).split(",")
+    users    = option(:users).split(",").map { |u| u.delete(' ') }
 
     mysql = Mysql.connect(host, user, password, nil, (port.nil? ? nil : port.to_i), socket)
 
@@ -43,8 +43,11 @@ class MysqlConnectionStatistics < Scout::Plugin
     result = mysql.query('SHOW PROCESSLIST;')
     result.each do |row|
       user, state = row.to_a.values_at(1,4)
+      key = "#{user}_#{state}"
+      puts key
       next unless users.include?(user)
-      mysql_connection_stats["#{user}_#{state}"] = mysql_connection_stats.fetch("#{user}_#{state}", 0) + 1
+      mysql_connection_stats[key] = mysql_connection_stats.fetch(key, 0) + 1
+      puts "Added 1"
     end
     result.free
 
